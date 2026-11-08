@@ -273,8 +273,18 @@ for brand in brands:
                 "tile_background_color": "#ffffff" if mode == "Light" else "#1e1f20",
                 "color_collection_id": col_id,
                 "font_family": "'Inter', system-ui, sans-serif",
+                "base_font_size": "14px",
                 "border_radius": "12px",
-                "tile_shadow": True
+                "tile_shadow": True,
+                "tile_title_alignment": "left",
+                # Explicitly populate all boolean indicator fields to prevent Looker 26.x 422 errors on unset fields
+                "show_last_updated_indicator": True,
+                "show_reload_data_icon": True,
+                "show_dashboard_menu": True,
+                "show_filters_toggle": True,
+                "show_filters_bar": True,
+                "show_title": True,
+                "show_dashboard_header": True
             }
         })
         if name in theme_map:
