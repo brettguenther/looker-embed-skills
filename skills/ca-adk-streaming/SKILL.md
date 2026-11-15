@@ -83,12 +83,10 @@ root_agent = RootAgent(
 2. **Session State**: The primary agent populates `temp:data_result` or `temp:summary_data`.
 3. **Conditional Sub-agents**: Executed sequentially based on `run_when` predicates.
 
-### Real-time Sanitization & SSE Protocol
+### Real-time Sanitization
 During streaming, ensure the output is compatible with the target interface:
-- **Server-Sent Events (SSE) Route Integration**: When exposing ADK streaming over web APIs (e.g. FastAPI / Cloud Run), connect via `/v1beta/interactions?stream=true&alt=sse` to stream partial tokens, `requires_action` tool calls, and data payloads directly to frontend clients.
 - **Image Conversion**: Convert inline bytes from CA API into Markdown image URIs.
 - **Text Cleaning**: Strip unnecessary code blocks or formatting from partial streams.
-- **Normalizing Tool Calls (`requires_action`)**: When sub-agents or client tools trigger actions (e.g. rendering Vega-Lite charts or opening custom drill drawers), normalize tool-call chunks into typed JSON events rather than raw SQL or unparsed dumps.
 
 ## 5. Best Practices
 - **Resilient Flows**: Ensure the `RootAgent` continues even if an optional sub-agent fails.

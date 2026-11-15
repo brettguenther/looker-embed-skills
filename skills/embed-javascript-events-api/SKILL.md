@@ -182,4 +182,4 @@ LookerEmbedSDK.createDashboardWithId(42)
   .build()
   .connect();
 ```
-To eliminate the menu options entirely, pair this with theme configuration (`ThemeSettings.show_dashboard_menu = false`) and tile-level LookML configuration (`explore: false`).
+To eliminate the menu options entirely, pair this with theme configuration (`ThemeSettings.show_dashboard_menu = false`) and omit the `explore` permission from the embed user's `permissions` array.

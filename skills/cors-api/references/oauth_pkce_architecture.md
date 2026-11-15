@@ -19,7 +19,7 @@ sequenceDiagram
     SPA->>SPA: Generates PKCE code_verifier & S256 code_challenge
     SPA->>LookerAuth: Redirects to GET /auth (client_id, redirect_uri, code_challenge, scope=cors_api, state)
     alt User not yet logged into Looker (e.g., SAML JIT first login)
-        LookerAuth->>LookerAuth: preflight_oauth_request! validates client_id & redirect_uri, stashes /auth in session
+        LookerAuth->>LookerAuth: Validates client_id & redirect_uri, saves /auth return URL in session
         LookerAuth->>IdP: Redirects to SAML/OIDC IdP
         IdP-->>LookerAuth: Valid assertion -> JIT provisions Looker user & session
         LookerAuth-->>User: Renders mandatory first-login OAuth consent screen
@@ -33,7 +33,7 @@ sequenceDiagram
 
 ---
 
-## 2. Registering the OAuth Client Application (`OauthClientApp`)
+## 2. Registering the OAuth Client Application
 
 Register your SPA via the Looker API Explorer (`Admin > Platform > API Explorer` -> `Auth` -> `register_oauth_client_app`) or SDK:
 
@@ -78,6 +78,6 @@ Looker validates `redirect_uri` during both the authorization request (`GET /aut
 ## 4. First-Login SAML / OIDC Just-in-Time (JIT) Provisioning Behavior
 
 When a user who has never logged into Looker initiates a CORS OAuth PKCE flow while SAML or OIDC authentication is enabled:
-1. Looker runs `preflight_oauth_request!` before enforcing session authentication, verifying `client_id` and `redirect_uri` and saving the full `/auth?...` request URL in the session return path.
+1. Looker validates `client_id` and `redirect_uri` before enforcing session authentication, saving the full `/auth?...` request URL in the session return path.
 2. Looker redirects the browser to the SAML/OIDC Identity Provider. Upon receiving a valid assertion on callback, Looker JIT-provisions the user record, assigns groups/roles, and redirects back to `/auth`.
-3. Because a newly provisioned user has never authorized the `OauthClientApp`, Looker displays the **interactive OAuth consent screen** on first login. Therefore, the initial OAuth PKCE login must always run in a top-level browser window or popup—never inside a hidden `0x0` iframe.
+3. Because a newly provisioned user has never authorized the OAuth client application, Looker displays the **interactive OAuth consent screen** on first login. Therefore, the initial OAuth PKCE login must always run in a top-level browser window or popup—never inside a hidden `0x0` iframe.
