@@ -281,3 +281,14 @@ Curated Looker agents can be mirrored into the Gemini Data Analytics API as stat
 1. Create or update the `DataAgent` resource under `projects/<PROJECT_ID>/locations/us` pointing to your Looker instance's `LookerExploreReference`.
 2. Fetch the agent's native Agent-to-Agent (A2A) card from `GET https://geminidataanalytics.us.rep.googleapis.com/v1beta/projects/<PROJECT_ID>/locations/us/dataAgents/<AGENT_ID>/v1/card` (which natively declares the `https://www.googleapis.com/gemini-enterprise/a2a/extensions/authorizations/v1` extension).
 3. Register the card into Gemini Enterprise using `a2aAgentDefinition.jsonAgentCard` bound to a Looker OAuth 2.0 PKCE authorization resource (`/auth` and `/api/token`). When a user chats in Gemini Enterprise, Gemini Enterprise injects the user's Looker OAuth token directly into the A2A request metadata and authenticates the GCP API call via `service-<PROJECT_NUM>@gcp-sa-discoveryengine.iam.gserviceaccount.com` (`roles/geminidataanalytics.dataAgentUser`).
+
+## 10. Embed Architecture & Credential Scoping
+
+In custom web applications and embedded portals where users interact with Looker Conversational Analytics:
+- **User-Scoped vs. Service Account Credentials**: When per-viewer row-level security (`access_filter`), column masking, or model permissions must be enforced, pass a **user-scoped Bearer token** (obtained via `login_user(looker_user_id)` for embed users or cookieless session token exchange) when routing chat requests to Looker (`POST /api/4.0/conversational_analytics/chat`) or the Gemini Data Analytics API. Shared service account or OAuth client credentials remain suitable when all viewers share a uniform data access tier.
+- **Enforcing Row-Level Security & Field Permissions**: Passing an embed user's Bearer token ensures Looker evaluates that viewer's `access_filter` rules, user attributes, and model grants when translating and executing queries.
+- **Required Embed Permissions**: When authenticating as an embed user, the assigned Looker role must include:
+  - `gemini_in_looker`
+  - `chat_with_agent`
+  - `chat_with_explore` (if explore-level conversational querying is enabled)
+- **Agent Group Sharing**: When using user-scoped embed tokens, grant the Embed User Group `view` access to the Conversational Analytics agent (via the Looker UI or `create_content_metadata_access` on the agent's `content_metadata_id`).
