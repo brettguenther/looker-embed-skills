@@ -102,3 +102,9 @@ const CustomTable = ({ data, fields }) => {
 - **React 17/18 Peer Dependency Constraint**: `@looker/visualizations` and `@looker/components` declare peer dependencies on React 17/18 and `styled-components@^5`.
 - **Headless Query Execution for React 19+ Applications**: In React 19+ applications (or lightweight AI-generated reporting canvases), bypass `@looker/components` and execute governed semantic queries directly via `@looker/sdk` (`sdk.run_inline_query({ result_format: 'json', body: writeQuery })`), binding the returned JSON rows and field metadata to modern chart libraries (Recharts, Vega-Lite, Highcharts, or Tailwind KPI grids).
 - **Sandboxed `postMessage` Query Bridge for Dynamic Canvases**: When rendering untrusted or LLM-generated HTML/React report views inside a sandboxed iframe, keep the Looker SDK session strictly in the parent host shell and expose a narrow `window.addEventListener('message')` bridge (`LOOKER_RUN_QUERY` -> `sdk.run_inline_query` -> `LOOKER_QUERY_RESULT`) so child frames never access raw Looker tokens.
+
+## 9. Parallel Semantic Widgets & In-Memory TTL Cache Pattern
+
+In custom analytics dashboards and embedded portals where multiple scorecards, metric cards, and charts render simultaneously:
+- **Parallel `run_inline_query` Execution**: Execute aggregate semantic queries concurrently via `@looker/sdk` (`sdk.run_inline_query({ result_format: 'json', body: query_def })`) backed by a lightweight per-user TTL cache (e.g., 180 seconds in memory or React state) to provide fast screen transitions without overloading the Looker API.
+- **User-Scoped vs. Shared Query Context**: When per-viewer row-level security (`access_filter`), user attributes, or model grants are required, execute semantic queries using the embed user's access token (`login_user(looker_user_id)` or cookieless session token); shared service account credentials can be used when all viewers share a uniform access tier.
