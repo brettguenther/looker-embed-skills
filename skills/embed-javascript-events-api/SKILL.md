@@ -37,8 +37,9 @@ window.addEventListener("message", function (event) {
 - **`dashboard:loaded`**: Fired when the dashboard metadata is loaded (before queries run).
 - **`dashboard:run:start`**: Fired when tiles begin querying for data.
 - **`dashboard:run:complete`**: Fired when all tiles have finished loading. Includes `dashboard.options` (layout/elements).
-- **`dashboard:filters:update`**: Fired when a user changes filters within the dashboard.
+- **`dashboard:filters:update`**: Fired when a user changes filters within the dashboard. Note: In Looker 26.22+, updates target dashboard-scoped filters; tiles with `vis_filter: true` maintain independent tile-scoped filters.
 - **`dashboard:tile:view`**: Fired when a user clicks "View Original Look" on a tile. Cancellable.
+- **`dashboard:tile:explore`**: Fired when a user clicks "Explore from Here" on a tile. Cancellable.
 - **`dashboard:tile:merge`**: Fired when a user clicks "Edit Merged Query". Cancellable.
 
 ### Look & Explore Events
@@ -169,3 +170,16 @@ LookerEmbedSDK.createDashboardWithId(100)
 
 ### Pattern C: Bidirectional URL & Filter State Sync
 When embedding a dashboard inside a host SPA or a standalone Looker Extension split-workspace layout, listen for `dashboard:filters:update` and `page:changed` to synchronize the active dashboard ID and filter map with the host URL query string (or `extensionSDK.clientRouteChanged` inside a Looker Extension) so browser refreshes and shared deep links preserve the user's filter state.
+
+### Pattern D: Closed System & PBL Navigation Guardrails
+In external SaaS or Powered by Looker (PBL) applications running with Looker's Closed System toggle enabled (where viewers must never navigate into raw Explores, personal folders, or unapproved looks), intercept drill actions by returning `{ cancel: true }`:
+
+```javascript
+LookerEmbedSDK.createDashboardWithId(42)
+  .appendTo('#embed-container')
+  .on('dashboard:tile:explore', () => ({ cancel: true }))
+  .on('dashboard:tile:view', () => ({ cancel: true }))
+  .build()
+  .connect();
+```
+To eliminate the menu options entirely, pair this with theme configuration (`ThemeSettings.show_dashboard_menu = false`) and tile-level LookML configuration (`explore: false`).

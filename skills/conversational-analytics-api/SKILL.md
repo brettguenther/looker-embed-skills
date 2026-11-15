@@ -281,3 +281,14 @@ Curated Looker agents can be mirrored into the Gemini Data Analytics API as stat
 1. Create or update the `DataAgent` resource under `projects/<PROJECT_ID>/locations/us` pointing to your Looker instance's `LookerExploreReference`.
 2. Fetch the agent's native Agent-to-Agent (A2A) card from `GET https://geminidataanalytics.us.rep.googleapis.com/v1beta/projects/<PROJECT_ID>/locations/us/dataAgents/<AGENT_ID>/v1/card` (which natively declares the `https://www.googleapis.com/gemini-enterprise/a2a/extensions/authorizations/v1` extension).
 3. Register the card into Gemini Enterprise using `a2aAgentDefinition.jsonAgentCard` bound to a Looker OAuth 2.0 PKCE authorization resource (`/auth` and `/api/token`). When a user chats in Gemini Enterprise, Gemini Enterprise injects the user's Looker OAuth token directly into the A2A request metadata and authenticates the GCP API call via `service-<PROJECT_NUM>@gcp-sa-discoveryengine.iam.gserviceaccount.com` (`roles/geminidataanalytics.dataAgentUser`).
+
+## 10. Embed Architecture & User-Scoped Bearer Token Passthrough
+
+In custom web applications and embedded portals where users interact with Looker Conversational Analytics:
+- **User-Scoped Bearer Tokens**: When routing chat requests to Looker (`POST /api/4.0/conversational_analytics/chat`) or the Gemini Data Analytics API, pass the **user-scoped Bearer token** (obtained via `login_user(looker_user_id)` for embed users or via cookieless session token exchange), **never** admin or service account credentials.
+- **Enforcing Row-Level Security & Field Permissions**: Passing the embed user's Bearer token ensures Looker strictly evaluates the user's `access_filter` row-level security constraints, column masking, and model grants when translating and executing queries.
+- **Required Embed Permissions**: The Looker role assigned to the embed user must contain:
+  - `gemini_in_looker`
+  - `chat_with_agent`
+  - `chat_with_explore` (if explore-level conversational querying is enabled)
+- **Agent Group Sharing**: The Conversational Analytics agent must be explicitly shared with the Embed User Group (e.g., via `POST /api/4.0/conversational_analytics/agents/{agent_id}/share` or the Looker Agent management UI) so embed users have read/chat access.

@@ -140,6 +140,10 @@ Cookieless embedding requires two backend endpoints to manage sessions and token
 1. **Acquire Session**: Calls `acquire_embed_cookieless_session` API. Returns tokens (except `session_reference_token` which must be kept server-side).
 2. **Generate Tokens**: Calls `generate_tokens_for_cookieless_session` when existing tokens are near expiration.
 
+### Synchronous User Provisioning vs. Lazy Creation
+- **`create_sso_embed_url` (Lazy Creation)**: When your backend calls `POST /api/4.0/embed/sso_url`, Looker merely computes an HMAC-SHA1 signature string. The user record is **not** created in Looker until the browser iframe navigates to `/login/embed/...` and redeems the signed URL. Until redemption, `user_id` does not exist in Looker.
+- **`acquire_embed_cookieless_session` (Synchronous Creation)**: Calling `POST /api/4.0/embed/cookieless_session/acquire` **synchronously provisions the user record immediately** in Looker and returns the allocated `user_id` alongside the session tokens. This enables backend workflows to immediately bind user attributes, seed database OAuth tokens (`create_oauth_application_user_state`), or assign group memberships before opening or mounting the embed iframe.
+
 ## 4. Advanced SDK Features
 - **Dynamic Height**: `.withDynamicIFrameHeight()` handles iframe resizing based on content.
 - **Full Screen**: `.withAllowAttr('fullscreen')` enables browser fullscreen mode for tiles.
@@ -175,3 +179,6 @@ Cookieless embedding requires two backend endpoints to manage sessions and token
 2. **Shared Query Cache Bypass with Data Warehouse Policy Tags / Dynamic Masking**:
    - Looker's query cache key hashes the generated SQL string and connection name, **not** external Data Warehouse OAuth user identities or BigQuery Column-Level Policy Tags / Dynamic Data Masking rules.
    - If two embedded users with different BigQuery Policy Tag / Dynamic Masking clearances execute identical SQL against a shared cache, Looker can serve cached unmasked results from the privileged user to the masked user unless you disable caching (`persist_for: "0 seconds"` on the model/explore) or inject the user's clearance attribute into the SQL (`sql_always_where: 1=1 -- {{ _user_attributes['clearance_tier'] }} ;;`).
+3. **PDT Overrides (`DBConnectionOverride::PDT_CONTEXT`) & Parameterized Tenancy**:
+   - In multi-tenant architectures where database connections parameterize the Default Dataset or GCP Service Account via user attributes (e.g. `{{ _user_attributes['dataset'] }}`), Looker blocks enabling PDTs (`tmp_db_name`) unless overridden in `DBConnectionOverride::PDT_CONTEXT`.
+   - Dynamic Liquid attributes in PDT `sql` hash to separate per-tenant PDT tables in `tmp_db_name` during query-time builds, but the background PDT regenerator runs without an active user (`user_id = nil`) and only ever materializes the User Attribute's static default value. For embed applications requiring scheduled PDT rebuilds, ensure default attribute values point to valid staging datasets or trigger PDT rebuilds via query-time runs.
