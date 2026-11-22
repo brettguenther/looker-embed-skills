@@ -59,6 +59,9 @@ def seed_bigquery_oauth_tokens(
     )
 ```
 
+> [!CAUTION]
+> **Short-Lived Tokens Without `refresh_token` & Query Cache Keys**: Looker's data cache key incorporates connection identity and `refresh_token` metadata, but **omits** the short-lived `access_token`. If your backend seeds ephemeral `access_token`s (such as STS/Workforce Identity or per-tenant service-account tokens) via `create_oauth_application_user_state` with `refresh_token` omitted or `null`, Looker can serve cached results across token rotations or clearance changes unless you pass a synthetic policy/version fingerprint in `refresh_token` or set `persist_for: "0 seconds"` on the model/explore.
+
 #### Option 2: Top-Level Popup Pre-Authentication (Before Embedding)
 If backend token seeding is not viable, the browser must complete BigQuery OAuth in a top-level popup window (`window.open`) **prior** to redeeming `GET /login/embed?t=<token>`:
 1. For a custom OAuth application, open a popup to `https://<looker_host>/external_oauth/authenticate/<oauth_app_id>?redirect_url=https://<looker_host>/external_oauth/success`.
@@ -76,7 +79,7 @@ If per-user OAuth was chosen only for dataset isolation or cost auditing rather 
 
 | Error / Symptom | Root Cause | Resolution |
 | :--- | :--- | :--- |
-| **`400 Bad Request` on `/auth` or `/api/token` (`Invalid redirect_uri`)** | `redirect_uri` contains a wildcard (`*`), trailing slash mismatch, dynamic subpath, or query string. | Register exact callback URLs in `redirect_uris: string[]` and pass dynamic return routes via the OAuth `state` parameter or `sessionStorage`. |
+| **`400 Bad Request` on `/auth` or `/api/token` (`Invalid redirect_uri` / client not found)** | `redirect_uri` contains a wildcard (`*`), trailing slash mismatch, dynamic subpath, query string, or unregistered loopback port (`localhost:<port>` / `127.0.0.1:<port>`), or `client_id` does not match the Application Library entry (`com.looker.*`). | Register exact callback URLs including the exact port in `redirect_uris: string[]` (or configure the client to match the library port), pass dynamic return routes via `state`/`sessionStorage`, and verify `client_id` matches the registered `client_guid`. |
 | **CORS Preflight (`OPTIONS`) Fails with `403 Forbidden`** | Frontend origin (`https://host:port`) is missing from Looker's Embedded Domain Allowlist. | Add the exact protocol, hostname, and port (no trailing slash) to **Admin > Embed > Embedded Domain Allowlist**. |
 | **`403 Forbidden` on `/external_oauth/*` inside iframe** | Embed sessions initiated via `/login/embed` restrict navigation to embed-allowed routes and disallow `/external_oauth/*`. | Complete database OAuth in a top-level popup *prior* to iframe mounting, or seed database OAuth tokens headlessly via backend API. |
 | **`window.crypto.subtle is undefined` during PKCE challenge generation** | Browser disables Web Crypto API on non-secure (`http://`) origins other than `localhost`/`127.0.0.1`. | Serve local and staging environments over `https://` (`HTTPS=true` or Vite `@vitejs/plugin-basic-ssl`). |

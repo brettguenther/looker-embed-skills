@@ -98,6 +98,8 @@ During streaming, ensure the output is compatible with the target interface:
 - **Streaming Interruption**: Check if intermediate proxies or gateways support long-lived HTTP/2 streams.
 - **State Mismatch**: Verify that the keys used in `run_when` match exactly what is set by the primary agent.
 - **Permission Errors**: Ensure the service account has both `roles/geminidataanalytics.user` and Looker `access_data` permissions.
+- **Empty Initialization Turns (`400 INVALID_ARGUMENT`)**: `DataChatServiceClient.chat()` rejects empty `UserMessage.text` payloads (`content cannot be empty`). Ensure ADK/A2UI frontend wrappers never emit an empty initial turn when opening a chat panel.
+- **Multi-Regional Endpoint Routing (`ClientOptions`)**: If your Looker instance resides in a region requiring explicit `us` or `eu` GDA routing (or your `DataAgent` lives in `locations/us` or `locations/eu`), initialize `DataChatServiceClient(client_options=ClientOptions(api_endpoint="geminidataanalytics.us.rep.googleapis.com"))` (or `.eu.rep.googleapis.com`) and match `parent=f"projects/{PROJECT_ID}/locations/us"`.
 
 ## 7. Modern ADK `App` Packaging & Gemini Enterprise OAuth Token Injection
 
@@ -124,7 +126,7 @@ def resolve_looker_credentials(context: InvocationContext, auth_id: str) -> gemi
     creds = geminidataanalytics.Credentials()
     user_token = context.session.state.get(auth_id)
     if user_token:
-        creds.oauth.access.access_token = user_token
+        creds.oauth.token.access_token = user_token
     else:
         creds.oauth.secret.client_id = os.environ["LOOKERSDK_CLIENT_ID"]
         creds.oauth.secret.client_secret = os.environ["LOOKERSDK_CLIENT_SECRET"]
