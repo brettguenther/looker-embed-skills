@@ -60,18 +60,22 @@ sdk.register_oauth_client_app(
 
 ---
 
-## 3. Strict `redirect_uri` Validation Rules (No Wildcards)
+## 3. Strict `redirect_uri` Validation & Client Scoping Rules
 
 Looker validates `redirect_uri` during both the authorization request (`GET /auth`, `POST /auth`) and the token exchange (`POST /api/token`):
 
-1. **Exact Character-for-Character Matching (`==`)**:
-   - Looker **does not support wildcards (`*`), globs, or regular expressions** in `redirect_uri` or `redirect_uris` (whether in the path, query string, subdomain, or port).
-   - Any difference between the request's `redirect_uri` and the registered URI—including a trailing slash (`/`), a dynamic subpath (`/callback/report-42`), or inline query parameters—causes Looker to reject the request with `400 Bad Request`.
-2. **RFC 8252 Loopback IP Exception**:
-   - Dynamic port matching is permitted **only** for IPv4/IPv6 loopback literals (`http://127.0.0.1:<port>/...` or `http://[::1]:<port>/...`) for native/CLI loopback flows. Notably, `https://localhost:<port>` does **not** qualify as an IP literal and requires exact port registration.
+1. **Exact Character-for-Character Matching (`==`) — Including Loopback Ports**:
+   - Looker **does not support wildcards (`*`), globs, regular expressions, Dynamic Client Registration (RFC 7591), or dynamic loopback port matching (RFC 8252 Section 7.3)** in `redirect_uri` or `redirect_uris`.
+   - Any difference between the request's `redirect_uri` and a registered URI—including the port on `localhost` or `127.0.0.1`, a trailing slash (`/`), a dynamic subpath (`/callback/report-42`), or inline query parameters—causes Looker to reject the request with `400 Bad Request`.
+2. **Application Library (`com.looker.*`) vs. Custom Clients**:
+   - Looker reserves the `com.looker.*` `client_guid` prefix for built-in **Admin > Authentication > Manage OAuth Clients > Application Library** entries, whose pre-populated redirect URIs (such as `http://localhost:8080/callback` and `http://127.0.0.1:8080/callback`) are fixed and read-only. If a local or native client requires a different port or callback path, register a separate client under **Custom Clients** (using a `client_guid` that does not start with `com.looker.`).
 3. **Handling Dynamic Return Paths Without Wildcards**:
    - **Option A (`redirect_uris` Array)**: Register a finite list of static environment callbacks in `redirect_uris: string[]`.
    - **Option B (OAuth `state` or `sessionStorage`)**: Register a single static callback URI (`https://app.example.com/callback`). Before redirecting to `/auth`, store the user's intended deep-link destination (e.g., `/dashboards/42?region=APAC`) in `sessionStorage` or encode it in the OAuth `state` parameter, then route the user there via React Router after `/api/token` completes.
+4. **No Per-Client Model Scopes (`group_id` vs. Token Permissions)**:
+   - Setting `group_id` on `register_oauth_client_app` (`WriteOauthClientApp`) restricts *which Looker user group can authenticate using that OAuth client*, not which models or Explores the issued `cors_api` access token can query. Once authenticated, the token inherits the user's full Looker Roles and Model Sets.
+5. **Pre-Authorizing Users (`activate_app_user`)**:
+   - In controlled portal onboarding flows, an admin can pre-activate a user for an OAuth client via `POST /api/4.0/oauth_client_apps/{client_guid}/users/{user_id}` (`activate_app_user`) so the user skips the first-login OAuth consent screen.
 
 ---
 
